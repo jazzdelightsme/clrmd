@@ -800,6 +800,18 @@ namespace Microsoft.Diagnostics.Runtime
         protected IDataReader _dataReader;
         protected DataTargetImpl _dataTarget;
 
+        protected ICorDebug.ICorDebugProcess _corDebugProcess;
+        internal ICorDebug.ICorDebugProcess CorDebugProcess
+        {
+            get
+            {
+                if (_corDebugProcess == null)
+                    _corDebugProcess = ICorDebug.CLRDebugging.CreateICorDebugProcess(ClrInfo.ModuleInfo.ImageBase, _library.DacDataTarget, _dataTarget.FileLoader);
+
+                return _corDebugProcess;
+            }
+        }
+
         public RuntimeBase(ClrInfo info, DataTargetImpl dataTarget, DacLibrary lib)
         {
             Debug.Assert(lib != null);
@@ -826,6 +838,17 @@ namespace Microsoft.Diagnostics.Runtime
         public override DataTarget DataTarget
         {
             get { return _dataTarget; }
+        }
+
+        public void RegisterForRelease(object o)
+        {
+            if (o != null)
+                _library.AddToReleaseList(o);
+        }
+
+        public void RegisterForRelease(IModuleData module)
+        {
+            RegisterForRelease(module?.LegacyMetaDataImport);
         }
 
         public IDataReader DataReader
@@ -991,7 +1014,6 @@ namespace Microsoft.Diagnostics.Runtime
         }
 
         #region Abstract
-        internal abstract IEnumerable<ClrStackFrame> EnumerateStackFrames(uint osThreadId);
         internal abstract ulong GetFirstThread();
         internal abstract IThreadData GetThread(ulong addr);
         internal abstract IHeapDetails GetSvrHeapDetails(ulong addr);
