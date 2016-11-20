@@ -33,6 +33,13 @@ namespace Microsoft.Diagnostics.Runtime
             Debug.Assert(address == 0 || type.Heap.GetObjectType(address) == type);
         }
 
+#if !V2_SUPPORT
+        /// <summary>
+        /// Returns a C# dynamic value for this object.
+        /// </summary>
+        public dynamic Dynamic { get { return AsClrValue().Dynamic; } }
+#endif
+
         /// <summary>
         /// The address of the object.
         /// </summary>
@@ -59,7 +66,72 @@ namespace Microsoft.Diagnostics.Runtime
         /// </summary>
         public ulong Size { get { return _type.GetSize(Address); } }
 
-        #region GetField
+        /// <summary>
+        /// Returns whether this object is actually a boxed primitive or struct.
+        /// </summary>
+        public bool IsBoxed { get { return !_type.IsObjectReference; } }
+
+        /// <summary>
+        /// Unboxes a primitive or struct value and returns its corresponding ClrValue.
+        /// Throws an InvalidOperationException if IsBoxed is false.
+        /// </summary>
+        /// <returns>A ClrValue of the primitive/struct that was unboxed.</returns>
+        public ClrValue Unbox()
+        {
+            if (!IsBoxed)
+                throw new InvalidOperationException("Attempted to unbox a reference type.");
+
+            return new ClrValueImpl(_type.Heap.Runtime, Address + (uint)IntPtr.Size, _type, true);
+        }
+
+        /// <summary>
+        /// Returns whether this object is an array or not.
+        /// </summary>
+        public bool IsArray { get { return _type.IsArray; } }
+
+        /// <summary>
+        /// Returns the count of elements in this array, or throws InvalidOperatonException if this object is not an array.
+        /// </summary>
+        public int Length
+        {
+            get
+            {
+                if (!IsArray)
+                    throw new InvalidOperationException();
+
+                return _type.GetArrayLength(Address);
+            }
+        }
+
+        /// <summary>
+        /// Returns the given element in the array.
+        /// </summary>
+        /// <param name="i">The index of the element to return.</param>
+        /// <returns>A ClrValue of the value.</returns>
+        public ClrValue this[int i]
+        {
+            get
+            {
+                if (!IsArray)
+                    throw new InvalidOperationException();
+
+                ClrType arrayType = _type.ComponentType;
+
+                ulong addr = _type.GetArrayElementAddress(Address, i);
+                return new ClrValueImpl(_type.Heap.Runtime, addr, arrayType, !arrayType.IsObjectReference);
+            }
+        }
+
+        /// <summary>
+        /// Convenience function to convert to a ClrValue.
+        /// </summary>
+        /// <returns>A ClrValue representing this ClrObject.</returns>
+        public ClrValue AsClrValue()
+        {
+            return new ClrValueImpl(_type.Heap.Runtime, Address, _type);
+        }
+
+#region GetField
         /// <summary>
         /// Gets the given object reference field from this ClrObject.  Throws ArgumentException if the given field does
         /// not exist in the object.  Throws NullReferenceException if IsNull is true.
@@ -462,10 +534,10 @@ namespace Microsoft.Diagnostics.Runtime
             ulong address = field.GetAddress(Address);
             return address;
         }
-        #endregion
+#endregion
 
 
-        #region FieldOrNull
+#region FieldOrNull
         /// <summary>
         /// Gets an object reference field from ClrObject.  Any field which is a subclass of System.Object
         /// </summary>
@@ -879,6 +951,6 @@ namespace Microsoft.Diagnostics.Runtime
 
             return new UIntPtr((ulong)value);
         }
-        #endregion
+#endregion
     }
 }
