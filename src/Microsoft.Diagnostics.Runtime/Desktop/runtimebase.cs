@@ -51,6 +51,22 @@ namespace Microsoft.Diagnostics.Runtime.Desktop
             }
         }
 
+        internal override IGCInfo GetGCInfo()
+        {
+            IGCInfo data = GetGCInfoImpl();
+            if (data == null)
+            {
+                throw new ClrDiagnosticsException("This runtime is not initialized and contains no data.", ClrDiagnosticsException.HR.RuntimeUninitialized);
+            }
+
+            return data;
+        }
+
+        public override IEnumerable<ClrException> EnumerateSerializedExceptions()
+        {
+            return new ClrException[0];
+        }
+
         public override IEnumerable<int> EnumerateGCThreads()
         {
             foreach (uint thread in _dataReader.EnumerateAllThreads())
@@ -72,6 +88,8 @@ namespace Microsoft.Diagnostics.Runtime.Desktop
         /// Returns the version of the target process (v2, v4, v45)
         /// </summary>
         internal abstract DesktopVersion CLRVersion { get; }
+
+        internal abstract IGCInfo GetGCInfoImpl();
 
         /// <summary>
         /// Returns the pointer size of the target process.
@@ -152,7 +170,7 @@ namespace Microsoft.Diagnostics.Runtime.Desktop
             if (_corDebugThreads == null)
             {
                 _corDebugThreads = new Dictionary<uint, ICorDebugThread>();
-                
+
                 ICorDebugProcess process = CorDebugProcess;
                 if (process == null)
                     return null;

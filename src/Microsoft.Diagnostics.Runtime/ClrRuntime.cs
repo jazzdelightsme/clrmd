@@ -21,6 +21,11 @@ namespace Microsoft.Diagnostics.Runtime
     public abstract class ClrRuntime
     {
         /// <summary>
+        /// In .NET native crash dumps, we have a list of serialized exceptions objects. This property expose them as ClrException objects.
+        /// </summary>
+        public abstract IEnumerable<ClrException> EnumerateSerializedExceptions();
+
+        /// <summary>
         /// The ClrInfo of the current runtime.
         /// </summary>
         public ClrInfo ClrInfo { get; protected set; }
@@ -826,12 +831,12 @@ namespace Microsoft.Diagnostics.Runtime
             _dacInterface.Flush();
 
             IGCInfo data = GetGCInfo();
-            if (data == null)
-                throw new ClrDiagnosticsException("This runtime is not initialized and contains no data.", ClrDiagnosticsException.HR.RuntimeUninitialized);
-
-            ServerGC = data.ServerMode;
-            HeapCount = data.HeapCount;
-            CanWalkHeap = data.GCStructuresValid && !dataTarget.DataReader.IsMinidump;
+            if (data != null)
+            {
+                ServerGC = data.ServerMode;
+                HeapCount = data.HeapCount;
+                CanWalkHeap = data.GCStructuresValid && !dataTarget.DataReader.IsMinidump;
+            }
             _dataReader = dataTarget.DataReader;
         }
 
@@ -908,8 +913,6 @@ namespace Microsoft.Diagnostics.Runtime
             }
             else
             {
-                Debug.Assert(HeapCount == 1);
-
                 IHeapDetails heap = GetWksHeapDetails();
                 if (heap == null)
                     return false;

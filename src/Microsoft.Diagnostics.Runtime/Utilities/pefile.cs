@@ -72,7 +72,7 @@ namespace Microsoft.Diagnostics.Runtime.Utilities
             _stream = stream;
             _headerBuff = buffer;
             Header = header;
-            if (Header.PEHeaderSize > _headerBuff.Length)
+            if (header != null && header.PEHeaderSize > _headerBuff.Length)
                 throw new InvalidOperationException("Bad PE Header in " + filePath);
         }
         /// <summary>
@@ -242,7 +242,7 @@ namespace Microsoft.Diagnostics.Runtime.Utilities
         public void Dispose()
         {
             // This method can only be called once on a given object.  
-            _stream.Close();
+            _stream.Dispose();
             _headerBuff.Dispose();
             if (_freeBuff != null)
                 _freeBuff.Dispose();
